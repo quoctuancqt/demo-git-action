@@ -1,1 +1,1 @@
-# This repo demo how to use git action to deploy microservices to AKS
+## This repo demo how to use git action to deploy microservices to AKS using dotnet/tye
