@@ -1,0 +1,52 @@
+name: .NET Core
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  AZURE_AKS_CLUSTER: demo
+  AKS_RESOURCE_GROUP: demo
+  ACR_RESOURCE_URI: tuancao.azurecr.io
+
+jobs:
+  build:
+    if: github.event_name == 'push' && contains(toJson(github.event.commits), '***NO_CI***') == false && contains(toJson(github.event.commits), '[ci skip]') == false && contains(toJson(github.event.commits), '[skip ci]') == false
+    name: tye deploy
+    runs-on: ubuntu-latest
+    steps:
+    - name: ✔ Checkout
+      uses: actions/checkout@v2
+
+    - name: 🧰 Setup .NET Core
+      uses: actions/setup-dotnet@v1.5.0
+      with:
+        dotnet-version: 3.1.300
+
+    - name:  Install Tye tools
+      run: |
+        dotnet tool install -g Microsoft.Tye --version "0.3.0-alpha.20319.3"
+
+    - name:  Login to ACR
+      uses: Azure/docker-login@v1  
+      with:  
+        login-server: ${{ env.ACR_RESOURCE_URI }}
+        username: ${{ secrets.ACR_USER }}  
+        password: ${{ secrets.ACR_PASSWORD }}
+
+    - name:  Set AKS context
+      uses: azure/aks-set-context@v1
+      with:
+        creds: '${{ secrets.AZURE_CREDENTIALS }}'
+        cluster-name: ${{ env.AZURE_AKS_CLUSTER }}
+        resource-group: ${{ env.AKS_RESOURCE_GROUP }}
+
+    - name:  Install ingress-nginx
+      run: |
+        kubectl apply -f https://aka.ms/tye/ingress/deploy
+
+    - name: ☸ tye deploy
+      run: |
+        tye deploy -v Debug
